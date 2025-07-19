@@ -66,14 +66,14 @@ configurations = [
 # ]
 
 SAVE_DIR = "/mnt/tmp/trained_saes/"
-
+LOG_PATH = "/mnt/tmp/trained_saes/logs/"
 # Create logs directory if it doesn't exist
-os.makedirs("logs", exist_ok=True)
+os.makedirs(LOG_PATH, exist_ok=True)
 
 # Launch jobs
 for i, config in enumerate(configurations):
-    log_file = f"logs/{(config['arch'].replace(' ', '_'))}_l{config['layers']}_{config['device'].replace(':', '_')}.out"
-    
+    log_file = f"{LOG_PATH}/{(config['arch'].replace(' ', '_'))}_l{config['layers']}_{config['device'].replace(':', '_')}.out"
+
     if config["save_checkpoints"]:
         save_command = "--save_checkpoints"
     else:
