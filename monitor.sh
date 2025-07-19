@@ -1,0 +1,1 @@
+watch -d 'w; echo; df -h --local; echo; free -mh'
