@@ -18,7 +18,7 @@ from .dictionary import (
     AutoEncoderNew,
     JumpReluAutoEncoder,
 )
-from datasets import DatasetDict, load_from_disk
+
 
 def hf_dataset_to_generator(dataset_name, split="train", streaming=True):
     dataset = load_dataset(dataset_name, split=split, streaming=streaming)
@@ -180,16 +180,9 @@ def hf_sequence_packing_dataset_to_generator(
     assert min_chars > 0
 
     # Load both datasets as iterable streams
-
-    if save_split_to_disk:
-        pretrain_ds = load_dataset(pretrain_dataset, split=split, streaming=streaming, num_proc=os.cpu_count()//8)
-        dataset = DatasetDict({
-            "train": pretrain_ds,
-        })
-        pretrain_ds.save_to_disk(save_path)
-    else:
-        pretrain_ds = load_from_disk(save_path)["train"]
-        
+    
+    pretrain_ds = load_dataset(pretrain_dataset, split=split, streaming=streaming, num_proc=os.cpu_count()//8)
+    
     pretrain_ds = iter(pretrain_ds)
     eos_token = tokenizer.eos_token
 

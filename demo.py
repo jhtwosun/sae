@@ -66,19 +66,12 @@ def get_args():
     parser.add_argument(
         "--mixed_dataset", action="store_true", help="use mixed dataset"
     )
-    parser.add_argument(
-        "--data_path",
-        type=str,
-        default="/mnt/tmp/dataset",
-        help="path to save the packed pretrain dataset",
-    )
 
     args = parser.parse_args()
     return args
 
 
 def run_sae_training(
-    args,
     model_name: str,
     layer: int,
     save_dir: str,
@@ -152,8 +145,6 @@ def run_sae_training(
             pretrain_dataset="monology/pile-uncopyrighted",
             min_chars=context_length * 4,
             streaming=False,
-            save_split_to_disk=args.dry_run,
-            save_path=args.data_path
         )
 
     activation_buffer = ActivationBuffer(
@@ -355,7 +346,6 @@ if __name__ == "__main__":
 
     for layer in args.layers:
         run_sae_training(
-            args=args,
             model_name=args.model_name,
             layer=layer,
             save_dir=save_dir,
