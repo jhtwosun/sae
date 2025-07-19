@@ -1,0 +1,1 @@
+kill `ps -ef | grep "python demo.py" | grep -v grep | awk '{print $2}'`

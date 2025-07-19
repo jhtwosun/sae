@@ -142,7 +142,9 @@ def run_sae_training(
     else:
         generator = hf_sequence_packing_dataset_to_generator(
             tokenizer,
+            pretrain_dataset="monology/pile-uncopyrighted",
             min_chars=context_length * 4,
+            streaming=False,
         )
 
     activation_buffer = ActivationBuffer(
