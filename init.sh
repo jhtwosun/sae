@@ -1,3 +1,9 @@
+python3 -m virtualenv .dlr
+
+source .dlr/bin/activate
+
+cd dictionary_learning_demo
+
 git config submodule.dictionary_learning.url https://github.com/saprmarks/dictionary_learning.git
 
 git submodule update --init --recursive
