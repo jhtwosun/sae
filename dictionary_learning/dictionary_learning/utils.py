@@ -171,6 +171,8 @@ def hf_sequence_packing_dataset_to_generator(
     streaming: bool = True,
     pretrain_key: str = "text",
     sequence_pack_pretrain: bool = True,
+    save_split_to_disk: bool = False,
+    save_path: str = "packed_pretrain_dataset",
 ):
     """min_chars: minimum number of characters per sample. To perform sequence packing, set it to ~4x sequence length in tokens.
     Samples will be joined with the eos token.
@@ -178,8 +180,17 @@ def hf_sequence_packing_dataset_to_generator(
     assert min_chars > 0
 
     # Load both datasets as iterable streams
-    pretrain_ds = iter(load_dataset(pretrain_dataset, split=split, streaming=streaming))
 
+    if save_split_to_disk:
+        pretrain_ds = load_dataset(pretrain_dataset, split=split, streaming=streaming, num_proc=os.cpu_count()//8)
+        dataset = DatasetDict({
+            "train": pretrain_ds,
+        })
+        pretrain_ds.save_to_disk(save_path)
+    else:
+        pretrain_ds = load_from_disk(save_path)
+        
+    pretrain_ds = iter(pretrain_ds)
     eos_token = tokenizer.eos_token
 
     bos_token = tokenizer.bos_token if tokenizer.bos_token else eos_token
