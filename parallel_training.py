@@ -85,9 +85,9 @@ for i, config in enumerate(configurations):
         "--model_name", MODEL_NAME,
         "--architectures", config["arch"],
         "--layers", str(config["layers"]),
-        "--device", config["device"],
+        "--device", "cuda:0",
         save_command,
-        # "--use_wandb"
+        "--use_wandb"
     ]
 
     print(" ".join(cmd))
@@ -95,7 +95,7 @@ for i, config in enumerate(configurations):
     # Launch with nohup
     with open(log_file, "w") as f:
         subprocess.Popen(
-            f"nohup {' '.join(cmd)} > {log_file} 2>&1",
+            f"CUDA_VISIBLE_DEVICES={config['device'].replace('cuda:', '')} nohup {' '.join(cmd)} > {log_file} 2>&1",
             shell=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
