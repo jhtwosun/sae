@@ -66,6 +66,12 @@ def get_args():
     parser.add_argument(
         "--mixed_dataset", action="store_true", help="use mixed dataset"
     )
+    parser.add_argument(
+        "--data_path",
+        type=str,
+        default="/mnt/tmp/dataset",
+        help="path to save the packed pretrain dataset",
+    )
 
     args = parser.parse_args()
     return args
