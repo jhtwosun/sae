@@ -5,3 +5,4 @@
 *.out
 *.venv
 *.DS_Store
+*.pyc
