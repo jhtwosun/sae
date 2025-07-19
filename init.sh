@@ -10,3 +10,5 @@ git submodule update --init --recursive
 pip install -e .
 
 env HF_HOME='/mnt/tmp/hf_cache'
+echo HF_HOME='/mnt/tmp/hf_cache' >> ~/.bashrc
+source ~/.bashrc
