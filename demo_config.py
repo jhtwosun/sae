@@ -30,6 +30,24 @@ from dictionary_learning.dictionary_learning.dictionary import (
     JumpReluAutoEncoder,
 )
 
+from dictionary_learning.dictionary_learning.trainers.hierarchical_batch_top_k import (
+    HierarchicalBatchTopKTrainer,
+    HierarchicalBatchTopKSAE,
+)
+
+from dictionary_learning.dictionary_learning.trainers.hierarchical_batch_top_k_singleTopK import (
+    HierarchicalBatchTopKSAE_singleTopKTrainer,
+    HierarchicalBatchTopKSAE_singleTopK,
+)
+
+from dictionary_learning.dictionary_learning.trainers.hierarchical_gate import (
+    HierarchicalSAE_Gated,
+    HierarchicalSAEGatedTrainer,
+)
+from dictionary_learning.dictionary_learning.trainers.HierarchicalSAE_Recursive import (
+    HierarchicalSAERecursiveTrainer,
+    HierarchicalSAE_Recursive,
+)
 
 class TrainerType(Enum):
     STANDARD = "standard"
@@ -40,7 +58,8 @@ class TrainerType(Enum):
     P_ANNEAL = "p_anneal"
     JUMP_RELU = "jump_relu"
     Matryoshka_BATCH_TOP_K = "matryoshka_batch_top_k"
-
+    HIERARCHICAL_BATCH_TOP_K = "hierarchical_batch_top_k"
+    HIERARCHICAL_BATCH_SINGLE_TOP_K = "hierarchical_batch_single_top_k"
 
 @dataclass
 class LLMConfig:
@@ -101,9 +120,9 @@ SPARSITY_PENALTIES = SparsityPenalties(
 )
 
 
-TARGET_L0s = [80, 160]
+# TARGET_L0s = [80, 160]
 # TARGET_L0s = [20, 40, 80, 160, 320, 640]
-
+TARGET_L0s = [20, 40, 80, 160]
 
 @dataclass
 class BaseTrainerConfig:
@@ -206,6 +225,28 @@ class JumpReluTrainerConfig(BaseTrainerConfig):
     sparsity_penalty: float = 1.0
     bandwidth: float = 0.001
 
+@dataclass
+class HierarchicalBatchTopKTrainerConfig(BaseTrainerConfig):
+    dict_size: int
+    seed: int
+    lr: float
+    k: int
+    lower_level_latent_sizes: list[int] # 이름 및 타입 변경
+    lower_level_ks: list[int]           # 이름 및 타입 변경
+    auxk_alpha: float = 1 / 32
+    threshold_beta: float = 0.999
+    threshold_start_step: int = 1000
+
+@dataclass
+class HierarchicalBatchTopKSAE_singleTopKTrainerConfig(BaseTrainerConfig):
+    dict_size: int
+    seed: int
+    lr: float
+    k: int
+    lower_level_latent_sizes: list[int] # ks는 이제 필요 없습니다.
+    auxk_alpha: float = 1 / 32
+    threshold_beta: float = 0.999
+    threshold_start_step: int = 1000
 
 def get_trainer_configs(
     architectures: list[str],
@@ -366,6 +407,68 @@ def get_trainer_configs(
                 seed=seed,
                 target_l0=target_l0,
                 wandb_name=f"JumpReluTrainer-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
+    if TrainerType.HIERARCHICAL_BATCH_TOP_K.value in architectures:
+        # 테스트할 "하위 레벨" 구조들을 정의
+        lower_level_structures = [
+            {"lower_level_latent_sizes": [256], "lower_level_ks": [8]},
+            {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
+        ]
+        
+        # 메인 sweep 루프: 전체 dict_size와 k, 그리고 하위 구조를 조합
+        for seed, dict_size, learning_rate, k, structure in itertools.product(
+            seeds, dict_sizes, learning_rates, TARGET_L0s, lower_level_structures
+        ):
+            prod_lower_sizes = math.prod(structure["lower_level_latent_sizes"]) if structure["lower_level_latent_sizes"] else 1
+            prod_lower_ks = math.prod(structure["lower_level_ks"]) if structure["lower_level_ks"] else 1
+
+            # 전체 파라미터가 하위 구조와 호환되는지 확인
+            if dict_size % prod_lower_sizes != 0:
+                continue
+            if k % prod_lower_ks != 0:
+                continue
+
+            config = HierarchicalBatchTopKTrainerConfig(
+                **base_config,
+                trainer=HierarchicalBatchTopKTrainer,
+                dict_class=HierarchicalBatchTopKSAE,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                k=k,
+                lower_level_latent_sizes=structure["lower_level_latent_sizes"],
+                lower_level_ks=structure["lower_level_ks"],
+                wandb_name=f"HierarchicalBatchTopKTrainer-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
+    if TrainerType.HIERARCHICAL_BATCH_SINGLE_TOP_K.value in architectures:
+        # 🚀 2. 테스트할 하위 레벨 구조를 sizes만 포함하도록 단순화
+        lower_level_structures = [
+            [32, 16],  # 3-level 구조
+            # [64],      # 2-level 구조
+        ]
+        
+        # 🚀 3. 메인 루프에서 ks 관련 로직 제거
+        for seed, dict_size, learning_rate, k, lower_sizes in itertools.product(
+            seeds, dict_sizes, learning_rates, TARGET_L0s, lower_level_structures
+        ):
+            prod_lower_sizes = math.prod(lower_sizes) if lower_sizes else 1
+
+            if dict_size % prod_lower_sizes != 0:
+                continue
+            
+            # 🚀 4. Config 생성 시 ks 관련 인자 제거
+            config = HierarchicalBatchTopKSAE_singleTopKTrainerConfig(
+                **base_config,
+                trainer=HierarchicalBatchTopKTrainer,
+                dict_class=HierarchicalBatchTopKSAE,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                k=k,
+                lower_level_latent_sizes=lower_sizes,
+                wandb_name=f"HierarchicalBatchTopK-{model_name}-{layer}",
             )
             trainer_configs.append(asdict(config))
 

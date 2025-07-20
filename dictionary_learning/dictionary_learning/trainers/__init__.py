@@ -5,6 +5,10 @@ from .gated_anneal import GatedAnnealTrainer
 from .top_k import TopKTrainer
 from .jumprelu import JumpReluTrainer
 from .batch_top_k import BatchTopKTrainer, BatchTopKSAE
+from .hierarchical_batch_top_k_singleTopK import HierarchicalBatchTopKSAE_singleTopKTrainer, HierarchicalBatchTopKSAE_singleTopK
+from .hierarchical_batch_top_k import HierarchicalBatchTopKTrainer, HierarchicalBatchTopKSAE
+from .hierarchical_gate import HierarchicalSAE_Gated, HierarchicalSAEGatedTrainer
+from .HierarchicalSAE_Recursive import HierarchicalSAERecursiveTrainer, HierarchicalSAE_Recursive
 
 
 __all__ = [
@@ -16,4 +20,13 @@ __all__ = [
     "JumpReluTrainer",
     "BatchTopKTrainer",
     "BatchTopKSAE",
+    "HierarchicalBatchTopKSAE_singleTopKTrainer",
+    "HierarchicalBatchTopKSAE_singleTopK",
+    "HierarchicalBatchTopKTrainer",
+    "HierarchicalBatchTopKSAE"
+    "HierarchicalSAE_Gated",
+    "HierarchicalSAEGatedTrainer",
+    "HierarchicalSAE_Recursive",
+    "HierarchicalSAERecursiveTrainer"
+    
 ]

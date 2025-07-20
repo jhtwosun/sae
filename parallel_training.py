@@ -9,9 +9,9 @@ import os
 # So, we have jump_relu and gated on their own GPUs
 
 
-MODEL_NAME = "EleutherAI/pythia-160m-deduped"
+#MODEL_NAME = "EleutherAI/pythia-160m-deduped"
 # MODEL_NAME = "google/gemma-2-2b"
-# MODEL_NAME = "EleutherAI/pythia-70m-deduped"
+MODEL_NAME = "EleutherAI/pythia-70m-deduped"
 
 
 if "gemma" in MODEL_NAME:

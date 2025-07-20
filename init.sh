@@ -1,6 +1,6 @@
 cd ..
 
-sudo apt install software-properties-common -y
+sudo apt update && sudo apt install software-properties-common -y
 sudo add-apt-repository ppa:deadsnakes/ppa
 sudo apt install python3.10 python3.10-dev -y
 
@@ -13,9 +13,7 @@ source .dlr/bin/activate
 
 cd sae
 
-git config submodule.dictionary_learning.url https://github.com/saprmarks/dictionary_learning.git
 
-git submodule update --init --recursive
 pip install -e .
 
 env HF_HOME='/mnt/tmp/hf_cache'
