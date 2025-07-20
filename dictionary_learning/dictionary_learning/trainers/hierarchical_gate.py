@@ -165,11 +165,11 @@ class HierarchicalSAEGatedTrainer:
     def __init__(
         self, steps: int, activation_dim: int, dict_size: int, k: int, 
         lower_level_latent_sizes: List[int], lower_level_ks: List[int],
-        layer: int, lm_name: str, dict_class: type = HierarchicalSAEGated,
+        layer: int, lm_name: str, dict_class: type = HierarchicalSAE_Gated,
         lr: Optional[float] = None, auxk_alpha: float = 1 / 32, warmup_steps: int = 1000,
         decay_start: Optional[int] = None, threshold_beta: float = 0.999,
         threshold_start_step: int = 1000, seed: Optional[int] = None,
-        device: Optional[str] = None, wandb_name: str = "HierarchicalSAEGated",
+        device: Optional[str] = None, wandb_name: str = "HierarchicalSAE_Gated",
         submodule_name: Optional[str] = None,
     ):
         if seed is not None: t.manual_seed(seed); t.cuda.manual_seed_all(seed)

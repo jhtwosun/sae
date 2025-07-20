@@ -20,3 +20,6 @@ env HF_HOME='/mnt/tmp/hf_cache'
 echo HF_HOME='/mnt/tmp/hf_cache' >> ~/.bashrc
 
 sudo apt install tmux -y
+
+git config --global user.email "jhtwosun@gmail.com"
+git config --global user.name "jhtwosun"

@@ -128,7 +128,7 @@ class HierarchicalBatchTopKSAE_singleTopK(nn.Module):
 class HierarchicalBatchTopKSAE_singleTopKTrainer:
     def __init__(
         self, steps: int, activation_dim: int, dict_size: int, k: int, 
-        lower_level_latent_sizes: List[int], lower_level_ks: List[int],
+        lower_level_latent_sizes: List[int], 
         layer: int, lm_name: str, dict_class: type = HierarchicalBatchTopKSAE_singleTopK,
         lr: Optional[float] = None, auxk_alpha: float = 1 / 32, warmup_steps: int = 1000,
         decay_start: Optional[int] = None, threshold_beta: float = 0.999,
@@ -138,7 +138,7 @@ class HierarchicalBatchTopKSAE_singleTopKTrainer:
     ):
         if seed is not None: t.manual_seed(seed); t.cuda.manual_seed_all(seed)
         self.steps, self.activation_dim, self.dict_size, self.k = steps, activation_dim, dict_size, k
-        self.lower_level_latent_sizes, self.lower_level_ks = lower_level_latent_sizes, lower_level_ks
+        self.lower_level_latent_sizes, self.lower_level_ks = lower_level_latent_sizes, lower_level_latent_sizes
         self.layer, self.lm_name, self.submodule_name = layer, lm_name, submodule_name
         self.wandb_name, self.auxk_alpha = wandb_name, auxk_alpha
         self.warmup_steps, self.decay_start, self.threshold_beta = warmup_steps, decay_start, threshold_beta

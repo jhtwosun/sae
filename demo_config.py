@@ -45,7 +45,7 @@ from dictionary_learning.dictionary_learning.trainers.hierarchical_gate import (
     HierarchicalSAE_Gated,
     HierarchicalSAEGatedTrainer,
 )
-from dictionary_learning.dictionary_learning.trainers.HierarchicalSAE_Recursive import (
+from dictionary_learning.dictionary_learning.trainers.hierarchical_recursive import (
     HierarchicalSAERecursiveTrainer,
     HierarchicalSAE_Recursive,
 )
@@ -58,7 +58,7 @@ class TrainerType(Enum):
     GATED = "gated"
     P_ANNEAL = "p_anneal"
     JUMP_RELU = "jump_relu"
-    Matryoshka_BATCH_TOP_K = "matryoshka_batch_top_k"
+    MATRYOSHKA_BATCH_TOP_K = "matryoshka_batch_top_k"
     HIERARCHICAL_BATCH_TOP_K = "hierarchical_batch_top_k"
     HIERARCHICAL_BATCH_SINGLE_TOP_K = "hierarchical_batch_single_top_k"
     HIERARCHICAL_GATE = "hierarchical_gate"
@@ -93,7 +93,8 @@ WARMUP_STEPS = 1000
 SPARSITY_WARMUP_STEPS = 5000
 DECAY_START_FRACTION = 0.8
 
-learning_rates = [3e-4]
+#learning_rates = [3e-4]
+learning_rates = [1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
 
 wandb_project = "qwen-32b-sweep"
 
@@ -405,7 +406,7 @@ def get_trainer_configs(
             )
             trainer_configs.append(asdict(config))
 
-    if TrainerType.Matryoshka_BATCH_TOP_K.value in architectures:
+    if TrainerType.MATRYOSHKA_BATCH_TOP_K.value in architectures:
         for seed, dict_size, learning_rate, k in itertools.product(
             seeds, dict_sizes, learning_rates, TARGET_L0s
         ):
@@ -490,14 +491,14 @@ def get_trainer_configs(
             # 🚀 4. Config 생성 시 ks 관련 인자 제거
             config = HierarchicalBatchTopKSAE_singleTopKTrainerConfig(
                 **base_config,
-                trainer=HierarchicalBatchTopKTrainer,
-                dict_class=HierarchicalBatchTopKSAE,
+                trainer=HierarchicalBatchTopKSAE_singleTopKTrainer,
+                dict_class=HierarchicalBatchTopKSAE_singleTopK,
                 lr=learning_rate,
                 dict_size=dict_size,
                 seed=seed,
                 k=k,
                 lower_level_latent_sizes=lower_sizes,
-                wandb_name=f"HierarchicalBatchTopK-{model_name}-{layer}",
+                wandb_name=f"HierarchicalBatchTopKSAE_singleTopK-{model_name}-{layer}",
             )
             trainer_configs.append(asdict(config))
             
@@ -523,15 +524,15 @@ def get_trainer_configs(
 
             config = HierarchicalGateTrainerConfig(
                 **base_config,
-                trainer=HierarchicalBatchTopKTrainer,
-                dict_class=HierarchicalBatchTopKSAE,
+                trainer=HierarchicalSAEGatedTrainer,
+                dict_class=HierarchicalSAE_Gated,
                 lr=learning_rate,
                 dict_size=dict_size,
                 seed=seed,
                 k=k,
                 lower_level_latent_sizes=structure["lower_level_latent_sizes"],
                 lower_level_ks=structure["lower_level_ks"],
-                wandb_name=f"HierarchicalBatchTopKTrainer-{model_name}-{submodule_name}",
+                wandb_name=f"HierarchicalSAEGatedTrainer-{model_name}-{submodule_name}",
             )
             trainer_configs.append(asdict(config))
             
@@ -557,15 +558,15 @@ def get_trainer_configs(
 
             config = HierarchicalRecursiveTrainerConfig(
                 **base_config,
-                trainer=HierarchicalBatchTopKTrainer,
-                dict_class=HierarchicalBatchTopKSAE,
+                trainer=HierarchicalSAERecursiveTrainer,
+                dict_class=HierarchicalSAE_Recursive,
                 lr=learning_rate,
                 dict_size=dict_size,
                 seed=seed,
                 k=k,
                 lower_level_latent_sizes=structure["lower_level_latent_sizes"],
                 lower_level_ks=structure["lower_level_ks"],
-                wandb_name=f"HierarchicalBatchTopKTrainer-{model_name}-{submodule_name}",
+                wandb_name=f"HierarchicalSAE_Recursive-{model_name}-{submodule_name}",
             )
             trainer_configs.append(asdict(config))
     return trainer_configs

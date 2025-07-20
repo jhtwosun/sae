@@ -9,9 +9,9 @@ import os
 # So, we have jump_relu and gated on their own GPUs
 
 
-#MODEL_NAME = "EleutherAI/pythia-160m-deduped"
+MODEL_NAME = "EleutherAI/pythia-160m-deduped"
 # MODEL_NAME = "google/gemma-2-2b"
-MODEL_NAME = "EleutherAI/pythia-70m-deduped"
+# MODEL_NAME = "EleutherAI/pythia-70m-deduped"
 
 
 if "gemma" in MODEL_NAME:
@@ -25,30 +25,30 @@ else:
 
 
 configurations = [
+    # {
+    #     "arch": "hierarchical_batch_top_k",
+    #     "layers": layer,
+    #     "device": "cuda:0",
+    #     "save_checkpoints": False
+    # },
     {
-        "arch": "jump_relu",
-        "layers": layer,
-        "device": "cuda:0",
-        "save_checkpoints": False
-    },
-    {
-        "arch": "top_k p_anneal",
+        "arch": "hierarchical_batch_single_top_k",
         "layers": layer,
         "device": "cuda:1",
         "save_checkpoints": False
     },
-    {
-        "arch": "batch_top_k standard_new",
-        "layers": layer,
-        "device": "cuda:2",
-        "save_checkpoints": False
-    },
-    {
-        "arch": "gated",
-        "layers": layer,
-        "device": "cuda:3",
-        "save_checkpoints": False
-    },
+    # {
+    #     "arch": "hierarchical_gate",
+    #     "layers": layer,
+    #     "device": "cuda:2",
+    #     "save_checkpoints": False
+    # },
+    # {
+    #     "arch": "hierarchical_recursive",
+    #     "layers": layer,
+    #     "device": "cuda:3",
+    #     "save_checkpoints": False
+    # },
 ]
 
 # config for 2x 3090s
