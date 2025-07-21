@@ -45,9 +45,9 @@ from dictionary_learning.dictionary_learning.trainers.hierarchical_gate import (
     HierarchicalSAE_Gated,
     HierarchicalSAEGatedTrainer,
 )
-from dictionary_learning.dictionary_learning.trainers.hierarchical_recursive import (
+from dictionary_learning.dictionary_learning.trainers.hierarchical_moe import (
     HierarchicalSAERecursiveTrainer,
-    HierarchicalSAE_Recursive,
+    HierarchicalSAE_MOE,
 )
 
 class TrainerType(Enum):
@@ -475,8 +475,8 @@ def get_trainer_configs(
     if TrainerType.HIERARCHICAL_BATCH_SINGLE_TOP_K.value in architectures:
         # 🚀 2. 테스트할 하위 레벨 구조를 sizes만 포함하도록 단순화
         lower_level_structures = [
-            [32, 16],  # 3-level 구조
-            # [64],      # 2-level 구조
+            # [32, 16],  # 3-level 구조
+            [64],      # 2-level 구조
         ]
         
         # 🚀 3. 메인 루프에서 ks 관련 로직 제거
@@ -506,7 +506,7 @@ def get_trainer_configs(
         # 테스트할 "하위 레벨" 구조들을 정의
         lower_level_structures = [
             {"lower_level_latent_sizes": [256], "lower_level_ks": [8]},
-            {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
+            # {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
         ]
         
         # 메인 sweep 루프: 전체 dict_size와 k, 그리고 하위 구조를 조합
@@ -540,7 +540,7 @@ def get_trainer_configs(
         # 테스트할 "하위 레벨" 구조들을 정의
         lower_level_structures = [
             {"lower_level_latent_sizes": [256], "lower_level_ks": [8]},
-            {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
+            # {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
         ]
         
         # 메인 sweep 루프: 전체 dict_size와 k, 그리고 하위 구조를 조합
@@ -559,7 +559,7 @@ def get_trainer_configs(
             config = HierarchicalRecursiveTrainerConfig(
                 **base_config,
                 trainer=HierarchicalSAERecursiveTrainer,
-                dict_class=HierarchicalSAE_Recursive,
+                dict_class=HierarchicalSAE_MOE,
                 lr=learning_rate,
                 dict_size=dict_size,
                 seed=seed,

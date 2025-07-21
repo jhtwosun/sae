@@ -8,7 +8,7 @@ from .batch_top_k import BatchTopKTrainer, BatchTopKSAE
 from .hierarchical_batch_top_k_singleTopK import HierarchicalBatchTopKSAE_singleTopKTrainer, HierarchicalBatchTopKSAE_singleTopK
 from .hierarchical_batch_top_k import HierarchicalBatchTopKTrainer, HierarchicalBatchTopKSAE
 from .hierarchical_gate import HierarchicalSAE_Gated, HierarchicalSAEGatedTrainer
-from .hierarchical_recursive import HierarchicalSAERecursiveTrainer, HierarchicalSAE_Recursive
+from .hierarchical_moe import HierarchicalSAERecursiveTrainer, HierarchicalSAE_MOE
 
 
 __all__ = [
@@ -26,7 +26,7 @@ __all__ = [
     "HierarchicalBatchTopKSAE"
     "HierarchicalSAE_Gated",
     "HierarchicalSAEGatedTrainer",
-    "HierarchicalSAE_Recursive",
+    "HierarchicalSAE_MOE",
     "HierarchicalSAERecursiveTrainer"
     
 ]

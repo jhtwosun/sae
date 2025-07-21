@@ -114,6 +114,7 @@ class HierarchicalSAE_Gated(nn.Module):
                 grouped_acts = post_relu_acts.view(batch_size, num_groups, group_size)
                 sparse_acts = self._vectorized_group_topk(grouped_acts, self.ks_list[i])
             level_latents_sparse.append(sparse_acts)
+            # print(f'Level {i} sparse acts shape: {sparse_acts.shape}, k: {self.ks_list[i]}')
 
 
         final_latent = level_latents_sparse[-1].view(batch_size, *self.latent_sizes_list)
@@ -124,6 +125,8 @@ class HierarchicalSAE_Gated(nn.Module):
             
             # 게이트 통과 후 시그모이드 함수로 0~1 사이의 값으로 변환
             # 이 값이 상위 레벨의 특성을 얼마나 통과시킬지 결정
+            
+            # print(f'Gate {i} input shape: {latent_to_gate.shape}, gate size: {self.gates[i].weight.shape}')
             gate_signal = t.sigmoid(self.gates[i](latent_to_gate))
 
             # 브로드캐스팅을 위해 게이트 신호의 형태를 맞춰줌

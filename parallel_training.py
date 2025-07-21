@@ -31,24 +31,24 @@ configurations = [
     #     "device": "cuda:0",
     #     "save_checkpoints": False
     # },
-    {
-        "arch": "hierarchical_batch_single_top_k",
-        "layers": layer,
-        "device": "cuda:1",
-        "save_checkpoints": False
-    },
+    # {
+    #     "arch": "hierarchical_batch_single_top_k",
+    #     "layers": layer,
+    #     "device": "cuda:1",
+    #     "save_checkpoints": False
+    # },
     # {
     #     "arch": "hierarchical_gate",
     #     "layers": layer,
     #     "device": "cuda:2",
     #     "save_checkpoints": False
     # },
-    # {
-    #     "arch": "hierarchical_recursive",
-    #     "layers": layer,
-    #     "device": "cuda:3",
-    #     "save_checkpoints": False
-    # },
+    {
+        "arch": "hierarchical_batch_single_top_k",
+        "layers": layer,
+        "device": "cuda:3",
+        "save_checkpoints": False
+    },
 ]
 
 # config for 2x 3090s

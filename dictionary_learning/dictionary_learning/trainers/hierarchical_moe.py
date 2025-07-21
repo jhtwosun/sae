@@ -8,15 +8,15 @@ from collections import namedtuple
 from typing import Optional, List, Tuple, NamedTuple
 
 from ..dictionary import Dictionary
-from ..trainers.trainer import (
+from .trainer import (
     SAETrainer,
     get_lr_schedule,
     set_decoder_norm_to_unit_norm,
     remove_gradient_parallel_to_decoder_directions,
 )
-from ..trainers.batch_top_k import BatchTopKSAE
+from .batch_top_k import BatchTopKSAE
 
-class HierarchicalSAE_Recursive(nn.Module):
+class HierarchicalSAE_MOE(nn.Module):
     def __init__(self, activation_dim: int, dict_size: int, k: int, lower_level_latent_sizes: List[int], lower_level_ks: List[int]):
         super().__init__()
         
@@ -35,11 +35,11 @@ class HierarchicalSAE_Recursive(nn.Module):
         self.register_buffer("lower_level_latent_sizes", t.tensor(lower_level_latent_sizes, dtype=t.int64))
         self.register_buffer("lower_level_ks", t.tensor(lower_level_ks, dtype=t.int64))
         
-        self.decoder = nn.Linear(self.total_dict_size, self.activation_dim, bias=False)
-        self.b_dec = nn.Parameter(t.zeros(self.activation_dim))
         
         ## 변경/추가된 부분: 인코더를 재귀적/연쇄적으로 정의
         self.encoders = nn.ModuleList()
+        self.decoders = nn.ModuleList()
+        self.b_dec = nn.Parameter(t.zeros(self.activation_dim))
         # 첫 번째 인코더의 입력은 원본 활성화 차원
         current_input_dim = self.activation_dim 
         
@@ -109,6 +109,7 @@ class HierarchicalSAE_Recursive(nn.Module):
         current_latent = x_centered # 첫 입력은 중심화된 원본 활성화
         
         for i in range(self.n_levels):
+            print(f'pre-Level {i} input shape: {current_latent.shape}, k: {self.ks_list[i]}, encoder shape: {self.encoders[i].weight.shape}')
             # 현재 입력을 i번째 인코더에 통과시키고 ReLU 적용
             post_relu_acts = F.relu(self.encoders[i](current_latent))
             
@@ -122,6 +123,8 @@ class HierarchicalSAE_Recursive(nn.Module):
                 num_groups, group_size = int(np.prod(self.latent_sizes_list[:i])), self.latent_sizes_list[i]
                 grouped_acts = post_relu_acts.view(batch_size, num_groups, group_size)
                 sparse_acts = self._vectorized_group_topk(grouped_acts, self.ks_list[i])
+                
+            print(f'Level {i} sparse acts shape: {sparse_acts.shape}, k: {self.ks_list[i]}, post_relu shape: {post_relu_acts.shape}')
             level_latents_sparse.append(sparse_acts)
 
         # ... (계층 결합 및 나머지 로직은 기존과 동일) ...
@@ -163,11 +166,11 @@ class HierarchicalSAERecursiveTrainer:
     def __init__(
         self, steps: int, activation_dim: int, dict_size: int, k: int, 
         lower_level_latent_sizes: List[int], lower_level_ks: List[int],
-        layer: int, lm_name: str, dict_class: type = HierarchicalSAE_Recursive,
+        layer: int, lm_name: str, dict_class: type = HierarchicalSAE_MOE,
         lr: Optional[float] = None, auxk_alpha: float = 1 / 32, warmup_steps: int = 1000,
         decay_start: Optional[int] = None, threshold_beta: float = 0.999,
         threshold_start_step: int = 1000, seed: Optional[int] = None,
-        device: Optional[str] = None, wandb_name: str = "HierarchicalSAE_Recursive",
+        device: Optional[str] = None, wandb_name: str = "HierarchicalSAE_MOE",
         submodule_name: Optional[str] = None,
     ):
         if seed is not None: t.manual_seed(seed); t.cuda.manual_seed_all(seed)
