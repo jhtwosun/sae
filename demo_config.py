@@ -45,10 +45,15 @@ from dictionary_learning.dictionary_learning.trainers.hierarchical_gate import (
     HierarchicalSAE_Gated,
     HierarchicalSAEGatedTrainer,
 )
-from dictionary_learning.dictionary_learning.trainers.hierarchical_moe import (
-    HierarchicalSAERecursiveTrainer,
-    HierarchicalSAE_MOE,
+from dictionary_learning.dictionary_learning.trainers.adaptive_k import (
+    AdaptiveKTrainer,
+    AdaptiveKSAE,
 )
+from dictionary_learning.dictionary_learning.trainers.res_hsae import (
+    ResHSAETrainer,
+    ResHSAE,
+)
+
 
 class TrainerType(Enum):
     STANDARD = "standard"
@@ -63,6 +68,9 @@ class TrainerType(Enum):
     HIERARCHICAL_BATCH_SINGLE_TOP_K = "hierarchical_batch_single_top_k"
     HIERARCHICAL_GATE = "hierarchical_gate"
     HIERARCHICAL_RECURSIVE = "hierarchical_recursive"
+    ADAPTIVE_K = "adaptive_k"
+    RES_HSAE = "res_hsae"
+
 
 @dataclass
 class LLMConfig:
@@ -127,6 +135,7 @@ SPARSITY_PENALTIES = SparsityPenalties(
 # TARGET_L0s = [80, 160]
 # TARGET_L0s = [20, 40, 80, 160, 320, 640]
 TARGET_L0s = [20, 40, 80, 160]
+ADAPTIVE_K_ALPHAS = [1e-5, 1e-4, 1e-3] # New hyperparameter list for Adaptive-K
 
 @dataclass
 class BaseTrainerConfig:
@@ -230,6 +239,14 @@ class JumpReluTrainerConfig(BaseTrainerConfig):
     bandwidth: float = 0.001
 
 @dataclass
+class AdaptiveKTrainerConfig(BaseTrainerConfig):
+    dict_size: int
+    seed: int
+    lr: float
+    k_predictor_alpha: float
+    k_predictor_hidden_dim: int = 128
+
+@dataclass
 class HierarchicalBatchTopKTrainerConfig(BaseTrainerConfig):
     dict_size: int
     seed: int
@@ -240,6 +257,10 @@ class HierarchicalBatchTopKTrainerConfig(BaseTrainerConfig):
     auxk_alpha: float = 1 / 32
     threshold_beta: float = 0.999
     threshold_start_step: int = 1000
+
+@dataclass
+class ResHSAEConfig(HierarchicalBatchTopKTrainerConfig):
+    pass
 
 @dataclass
 class HierarchicalBatchTopKSAE_singleTopKTrainerConfig(BaseTrainerConfig):
@@ -306,6 +327,22 @@ def get_trainer_configs(
         "lm_name": model_name,
         "submodule_name": submodule_name,
     }
+    if TrainerType.ADAPTIVE_K.value in architectures:
+        for seed, dict_size, learning_rate, k_predictor_alpha in itertools.product(
+            seeds, dict_sizes, learning_rates, ADAPTIVE_K_ALPHAS
+        ):
+            config = AdaptiveKTrainerConfig(
+                **base_config,
+                trainer=AdaptiveKTrainer,
+                dict_class=AdaptiveKSAE,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                k_predictor_alpha=k_predictor_alpha,
+                wandb_name=f"AdaptiveKTrainer-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
+            
     if TrainerType.P_ANNEAL.value in architectures:
         for seed, dict_size, learning_rate, sparsity_penalty in itertools.product(
             seeds, dict_sizes, learning_rates, SPARSITY_PENALTIES.p_anneal
@@ -438,6 +475,35 @@ def get_trainer_configs(
                 wandb_name=f"JumpReluTrainer-{model_name}-{submodule_name}",
             )
             trainer_configs.append(asdict(config))
+
+    if TrainerType.RES_HSAE.value in architectures:
+        lower_level_structures = [
+            {"lower_level_latent_sizes": [256], "lower_level_ks": [8]},
+            {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
+        ]
+        for seed, dict_size, learning_rate, k, structure in itertools.product(
+            seeds, dict_sizes, learning_rates, TARGET_L0s, lower_level_structures
+        ):
+            prod_lower_sizes = math.prod(structure["lower_level_latent_sizes"]) if structure["lower_level_latent_sizes"] else 1
+            prod_lower_ks = math.prod(structure["lower_level_ks"]) if structure["lower_level_ks"] else 1
+            if dict_size % prod_lower_sizes != 0:
+                continue
+            if k % prod_lower_ks != 0:
+                continue
+            config = ResHSAEConfig(
+                **base_config,
+                trainer=ResHSAETrainer,
+                dict_class=ResHSAE,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                k=k,
+                lower_level_latent_sizes=structure["lower_level_latent_sizes"],
+                lower_level_ks=structure["lower_level_ks"],
+                wandb_name=f"ResHSAE-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
+
     if TrainerType.HIERARCHICAL_BATCH_TOP_K.value in architectures:
         # 테스트할 "하위 레벨" 구조들을 정의
         lower_level_structures = [
