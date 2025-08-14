@@ -109,7 +109,6 @@ class HierarchicalSAE_MOE(nn.Module):
         current_latent = x_centered # 첫 입력은 중심화된 원본 활성화
         
         for i in range(self.n_levels):
-            print(f'pre-Level {i} input shape: {current_latent.shape}, k: {self.ks_list[i]}, encoder shape: {self.encoders[i].weight.shape}')
             # 현재 입력을 i번째 인코더에 통과시키고 ReLU 적용
             post_relu_acts = F.relu(self.encoders[i](current_latent))
             

@@ -506,7 +506,7 @@ def get_trainer_configs(
         # 테스트할 "하위 레벨" 구조들을 정의
         lower_level_structures = [
             {"lower_level_latent_sizes": [256], "lower_level_ks": [8]},
-            {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
+            # {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
         ]
         
         # 메인 sweep 루프: 전체 dict_size와 k, 그리고 하위 구조를 조합
@@ -538,11 +538,40 @@ def get_trainer_configs(
             
     if TrainerType.HIERARCHICAL_BATCH_SINGLE_TOP_K.value in architectures:
         # 🚀 2. 테스트할 하위 레벨 구조를 sizes만 포함하도록 단순화
+        TARGET_L0s = [64, 128]
         lower_level_structures = [
-            # [32, 16],  # 3-level 구조
-            [64],      # 2-level 구조
+            [32, 16],  # 3-level 구조 # -> 64 / 
+            [64],      # 2-level 구조 -> 256 cat
         ]
         
+        # 🚀 3. 메인 루프에서 ks 관련 로직 제거
+        for seed, dict_size, learning_rate, k, lower_sizes in itertools.product(
+            seeds, dict_sizes, learning_rates, TARGET_L0s, lower_level_structures
+        ):
+            prod_lower_sizes = math.prod(lower_sizes) if lower_sizes else 1
+
+            if dict_size % prod_lower_sizes != 0:
+                continue
+            
+            # 🚀 4. Config 생성 시 ks 관련 인자 제거
+            config = HierarchicalBatchTopKSAE_singleTopKTrainerConfig(
+                **base_config,
+                trainer=HierarchicalBatchTopKSAE_singleTopKTrainer,
+                dict_class=HierarchicalBatchTopKSAE_singleTopK,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                k=k,
+                lower_level_latent_sizes=lower_sizes,
+                wandb_name=f"HierarchicalBatchTopKSAE_singleTopK-{model_name}-{layer}",
+            )
+            trainer_configs.append(asdict(config))
+    
+    if TrainerType.HIERARCHICAL_BATCH_SINGLE_TOP_K_middleK.value in architectures:
+        # 🚀 2. 테스트할 하위 레벨 구조를 sizes만 포함하도록 단순화
+        TARGET_L0s = [64, 128] # -> final k
+        lower_level_n = [8, 64, 256]
+
         # 🚀 3. 메인 루프에서 ks 관련 로직 제거
         for seed, dict_size, learning_rate, k, lower_sizes in itertools.product(
             seeds, dict_sizes, learning_rates, TARGET_L0s, lower_level_structures
@@ -569,8 +598,8 @@ def get_trainer_configs(
     if TrainerType.HIERARCHICAL_GATE.value in architectures:
         # 테스트할 "하위 레벨" 구조들을 정의
         lower_level_structures = [
-            {"lower_level_latent_sizes": [256], "lower_level_ks": [8]},
-            # {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
+            {"lower_level_latent_sizes": [256], "lower_level_ks": [8]}, # -> 64 / 
+            {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
         ]
         
         # 메인 sweep 루프: 전체 dict_size와 k, 그리고 하위 구조를 조합

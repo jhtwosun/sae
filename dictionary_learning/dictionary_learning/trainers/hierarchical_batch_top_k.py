@@ -69,36 +69,6 @@ class HierarchicalBatchTopKSAE(nn.Module):
                 positive_mask = threshold_tensor.data >= 0
                 threshold_tensor.data[positive_mask] *= scale
 
-    # def _batch_topk(self, acts: t.Tensor, k: int) -> t.Tensor:
-    #     batch_size = acts.size(0)
-    #     k_for_batch = k * batch_size
-    #     if k_for_batch == 0 or acts.numel() == 0: return t.zeros_like(acts)
-    #     k_for_batch = min(k_for_batch, acts.numel())
-    #     flattened_acts = acts.flatten()
-    #     top_k_values, top_k_indices = t.topk(flattened_acts, k_for_batch, sorted=False)
-    #     sparse_acts_flat = t.zeros_like(flattened_acts)
-    #     sparse_acts_flat.scatter_(-1, top_k_indices, top_k_values)
-    #     return sparse_acts_flat.reshape(acts.shape)
-
-    # def _vectorized_group_topk(self, acts: t.Tensor, k: int) -> t.Tensor:
-    #     batch_size, num_groups, group_size = acts.shape
-    #     k_for_batch = k * batch_size
-
-    #     if k_for_batch == 0:
-    #         return t.zeros_like(acts)
-        
-    #     k_for_batch = min(k_for_batch, batch_size * group_size)
-
-    #     acts_reshaped = acts.permute(1, 0, 2).reshape(num_groups, -1)
-        
-    #     top_k_values, top_k_indices = acts_reshaped.topk(k_for_batch, dim=-1, sorted=False)
-        
-    #     sparse_acts_reshaped = t.zeros_like(acts_reshaped)
-    #     sparse_acts_reshaped.scatter_(dim=-1, index=top_k_indices, src=top_k_values)
-        
-    #     sparse_acts = sparse_acts_reshaped.reshape(num_groups, batch_size, group_size).permute(1, 0, 2)
-        
-    #     return sparse_acts
 
     def _batch_topk(self, acts: t.Tensor, k: int) -> t.Tensor:
         # acts: (B, N)
