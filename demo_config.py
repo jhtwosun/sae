@@ -50,6 +50,25 @@ from dictionary_learning.dictionary_learning.trainers.hierarchical_moe import (
     HierarchicalSAE_MOE,
 )
 
+from dictionary_learning.dictionary_learning.trainers.adaptive_k import (
+    AdaptiveKTrainer,
+    AdaptiveKSAE,
+)
+from dictionary_learning.dictionary_learning.trainers.res_hsae import (
+    ResHSAETrainer,
+    ResHSAE,
+)
+
+from dictionary_learning.dictionary_learning.trainers.priming_hsae import (
+    PrimingHSAETrainer,
+    PrimingHSAE,
+)
+from dictionary_learning.dictionary_learning.trainers.gr_sae import (
+    GRSAETrainer,
+    GRSAE,
+)
+
+
 class TrainerType(Enum):
     STANDARD = "standard"
     STANDARD_NEW = "standard_new"
@@ -63,6 +82,10 @@ class TrainerType(Enum):
     HIERARCHICAL_BATCH_SINGLE_TOP_K = "hierarchical_batch_single_top_k"
     HIERARCHICAL_GATE = "hierarchical_gate"
     HIERARCHICAL_RECURSIVE = "hierarchical_recursive"
+    ADAPTIVE_K = "adaptive_k"
+    RES_HSAE = "res_hsae"
+    PRIMING_HSAE = "priming_hsae"
+    GR_SAE = "gr_sae"
 
 @dataclass
 class LLMConfig:
@@ -93,20 +116,30 @@ WARMUP_STEPS = 1000
 SPARSITY_WARMUP_STEPS = 5000
 DECAY_START_FRACTION = 0.8
 
-#learning_rates = [3e-4]
-learning_rates = [1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
+learning_rates = [3e-4]
+# learning_rates = [1e-3, 5e-4, 1e-4, 5e-5, 1e-5]
 
 wandb_project = "qwen-32b-sweep"
 
 LLM_CONFIG = {
+    # "EleutherAI/pythia-70m-deduped": LLMConfig(
+    #     llm_batch_size=64, context_length=1024, sae_batch_size=2048, dtype=t.float32
+    # ),
+    # "EleutherAI/pythia-160m-deduped": LLMConfig(
+    #     llm_batch_size=32, context_length=1024, sae_batch_size=2048, dtype=t.float32
+    # # ),
+    # "EleutherAI/pythia-160m-deduped": LLMConfig(
+    #     llm_batch_size=32, context_length=2048, sae_batch_size=4096, dtype=t.float32
+    # ),
+    
     "EleutherAI/pythia-70m-deduped": LLMConfig(
-        llm_batch_size=64, context_length=1024, sae_batch_size=2048, dtype=t.float32
+        llm_batch_size=64, context_length=1024, sae_batch_size=2048, dtype=t.bfloat16
     ),
     # "EleutherAI/pythia-160m-deduped": LLMConfig(
     #     llm_batch_size=32, context_length=1024, sae_batch_size=2048, dtype=t.float32
     # ),
     "EleutherAI/pythia-160m-deduped": LLMConfig(
-        llm_batch_size=32, context_length=2048, sae_batch_size=4096, dtype=t.float32
+        llm_batch_size=32, context_length=2048, sae_batch_size=4096, dtype=t.bfloat16
     ),
     "google/gemma-2-2b": LLMConfig(
         llm_batch_size=4, context_length=1024, sae_batch_size=2048, dtype=t.bfloat16
@@ -124,10 +157,13 @@ SPARSITY_PENALTIES = SparsityPenalties(
 )
 
 
-# TARGET_L0s = [80, 160]
+TARGET_L0s = [80, 160]
 # TARGET_L0s = [20, 40, 80, 160, 320, 640]
-TARGET_L0s = [20, 40, 80, 160]
+# TARGET_L0s = [20, 40, 80, 160]
 
+ADAPTIVE_K_ALPHAS = [1e-5, 1e-4, 1e-3]
+NUM_EXPERTS_LIST = [4, 8]
+ROUTING_ALPHAS = [0.01, 0.1]
 @dataclass
 class BaseTrainerConfig:
     activation_dim: int
@@ -276,6 +312,34 @@ class HierarchicalRecursiveTrainerConfig(BaseTrainerConfig):
     auxk_alpha: float = 1 / 32
     threshold_beta: float = 0.999
     threshold_start_step: int = 1000
+
+@dataclass
+class AdaptiveKTrainerConfig(BaseTrainerConfig):
+    dict_size: int
+    seed: int
+    lr: float
+    k_predictor_alpha: float
+    k_predictor_hidden_dim: int = 128
+    
+@dataclass
+class ResHSAEConfig(HierarchicalBatchTopKTrainerConfig):
+    pass
+
+@dataclass
+class PrimingHSAEConfig(HierarchicalBatchTopKTrainerConfig):
+    context_dim: int = 64
+    modulator_hidden_dim: int = 128
+
+@dataclass
+class GRSAEConfig(BaseTrainerConfig):
+    dict_size: int  # Not used directly, but needed for base class
+    seed: int
+    lr: float
+    l1_penalty: float
+    num_experts: int
+    expert_dict_size: int
+    routing_loss_alpha: float
+
 
 def get_trainer_configs(
     architectures: list[str],
@@ -569,4 +633,97 @@ def get_trainer_configs(
                 wandb_name=f"HierarchicalSAE_Recursive-{model_name}-{submodule_name}",
             )
             trainer_configs.append(asdict(config))
+            
+    if TrainerType.ADAPTIVE_K.value in architectures:
+        for seed, dict_size, learning_rate, k_predictor_alpha in itertools.product(
+            seeds, dict_sizes, learning_rates, ADAPTIVE_K_ALPHAS
+        ):
+            config = AdaptiveKTrainerConfig(
+                **base_config,
+                trainer=AdaptiveKTrainer,
+                dict_class=AdaptiveKSAE,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                k_predictor_alpha=k_predictor_alpha,
+                wandb_name=f"AdaptiveKTrainer-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
+
+    if TrainerType.RES_HSAE.value in architectures:
+        lower_level_structures = [
+            {"lower_level_latent_sizes": [256], "lower_level_ks": [8]},
+            {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
+        ]
+        for seed, dict_size, learning_rate, k, structure in itertools.product(
+            seeds, dict_sizes, learning_rates, TARGET_L0s, lower_level_structures
+        ):
+            prod_lower_sizes = math.prod(structure["lower_level_latent_sizes"]) if structure["lower_level_latent_sizes"] else 1
+            prod_lower_ks = math.prod(structure["lower_level_ks"]) if structure["lower_level_ks"] else 1
+            if dict_size % prod_lower_sizes != 0:
+                continue
+            if k % prod_lower_ks != 0:
+                continue
+            config = ResHSAEConfig(
+                **base_config,
+                trainer=ResHSAETrainer,
+                dict_class=ResHSAE,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                k=k,
+                lower_level_latent_sizes=structure["lower_level_latent_sizes"],
+                lower_level_ks=structure["lower_level_ks"],
+                wandb_name=f"ResHSAE-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
+
+
+    if TrainerType.GR_SAE.value in architectures:
+        for seed, expert_dict_size, learning_rate, l1_penalty, num_experts, routing_alpha in itertools.product(
+            seeds, dict_sizes, learning_rates, SPARSITY_PENALTIES.standard, NUM_EXPERTS_LIST, ROUTING_ALPHAS
+        ):
+            config = GRSAEConfig(
+                **base_config,
+                trainer=GRSAETrainer,
+                dict_class=GRSAE,
+                lr=learning_rate,
+                seed=seed,
+                dict_size=0,
+                l1_penalty=l1_penalty,
+                num_experts=num_experts,
+                expert_dict_size=expert_dict_size,
+                routing_loss_alpha=routing_alpha,
+                wandb_name=f"GRSAE-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
+
+    if TrainerType.PRIMING_HSAE.value in architectures:
+        lower_level_structures = [
+            {"lower_level_latent_sizes": [256], "lower_level_ks": [8]},
+            {"lower_level_latent_sizes": [32, 16], "lower_level_ks": [4, 4]},
+        ]
+        for seed, dict_size, learning_rate, k, structure in itertools.product(
+            seeds, dict_sizes, learning_rates, TARGET_L0s, lower_level_structures
+        ):
+            prod_lower_sizes = math.prod(structure["lower_level_latent_sizes"]) if structure["lower_level_latent_sizes"] else 1
+            prod_lower_ks = math.prod(structure["lower_level_ks"]) if structure["lower_level_ks"] else 1
+            if dict_size % prod_lower_sizes != 0:
+                continue
+            if k % prod_lower_ks != 0:
+                continue
+            config = PrimingHSAEConfig(
+                **base_config,
+                trainer=PrimingHSAETrainer,
+                dict_class=PrimingHSAE,
+                lr=learning_rate,
+                dict_size=dict_size,
+                seed=seed,
+                k=k,
+                lower_level_latent_sizes=structure["lower_level_latent_sizes"],
+                lower_level_ks=structure["lower_level_ks"],
+                wandb_name=f"PrimingHSAE-{model_name}-{submodule_name}",
+            )
+            trainer_configs.append(asdict(config))
+
     return trainer_configs

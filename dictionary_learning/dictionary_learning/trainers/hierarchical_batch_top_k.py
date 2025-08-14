@@ -261,7 +261,7 @@ class HierarchicalBatchTopKTrainer:
             target_thresholds = self.ae.thresholds[i]
             device_type = "cuda" if level_latent.is_cuda else "cpu"
 
-            with t.autocast(device_type=device_type, enabled=False), t.no_grad():
+            with t.no_grad():
                 if level_latent.dim() == 2:
                     active_acts = level_latent[level_latent > 0]
                     if active_acts.numel() == 0:
@@ -278,30 +278,30 @@ class HierarchicalBatchTopKTrainer:
                     target_thresholds[0] = new_threshold.to(dtype=target_thresholds.dtype)
 
 
-                elif level_latent.dim() == 3:
-                    B, G, D = level_latent.shape
-                    active_acts = t.where(level_latent > 0,
-                                        level_latent,
-                                        t.full_like(level_latent, float('inf')))
-                    min_per_group = active_acts.reshape(B * G, D).min(dim=1).values
-                    min_per_group = min_per_group.view(B, G).min(dim=0).values
+                # elif level_latent.dim() == 3:
+                #     B, G, D = level_latent.shape
+                #     active_acts = t.where(level_latent > 0,
+                #                         level_latent,
+                #                         t.full_like(level_latent, float('inf')))
+                #     min_per_group = active_acts.reshape(B * G, D).min(dim=1).values
+                #     min_per_group = min_per_group.view(B, G).min(dim=0).values
 
-                    has_min_val = min_per_group != float('inf')
-                    if has_min_val.any():
-                        curr = target_thresholds[has_min_val].to(t.float32)
-                        mins = min_per_group[has_min_val].detach().to(dtype=t.float32)
-                        new_vals = curr.clone()
+                #     has_min_val = min_per_group != float('inf')
+                #     if has_min_val.any():
+                #         curr = target_thresholds[has_min_val].to(t.float32)
+                #         mins = min_per_group[has_min_val].detach().to(dtype=t.float32)
+                #         new_vals = curr.clone()
 
-                        init_mask = curr < 0
-                        ema_mask = ~init_mask
+                #         init_mask = curr < 0
+                #         ema_mask = ~init_mask
 
-                        if init_mask.any():
-                            new_vals[init_mask] = mins[init_mask]
-                        if ema_mask.any():
-                            new_vals[ema_mask] = (self.threshold_beta * curr[ema_mask]) + \
-                                                ((1 - self.threshold_beta) * mins[ema_mask])
+                #         if init_mask.any():
+                #             new_vals[init_mask] = mins[init_mask]
+                #         if ema_mask.any():
+                #             new_vals[ema_mask] = (self.threshold_beta * curr[ema_mask]) + \
+                #                                 ((1 - self.threshold_beta) * mins[ema_mask])
 
-                        target_thresholds[has_min_val] = new_vals.to(dtype=target_thresholds.dtype)
+                #         target_thresholds[has_min_val] = new_vals.to(dtype=target_thresholds.dtype)
 
     def loss(self, x: t.Tensor, step: Optional[int] = None, logging: bool = False):
         f, active_indices_F, post_relu_acts_BF, level_latents_sparse = self.ae.encode(x, return_active=True)
